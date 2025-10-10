@@ -1,12 +1,38 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from "react";
+import { ControlPanel } from "@/components/ControlPanel";
+import { FaceCanvas } from "@/components/FaceCanvas";
+import { HistoryPanel } from "@/components/HistoryPanel";
+import { toast } from "sonner";
 
 const Index = () => {
+  const [description, setDescription] = useState("");
+
+  const handleGenerate = () => {
+    if (!description.trim()) {
+      toast.error("Please enter a witness description");
+      return;
+    }
+    toast.success("Generating composite from description...", {
+      description: "This may take a few moments",
+    });
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className="h-screen w-full flex overflow-hidden bg-background">
+      {/* Left Panel: Control Hub */}
+      <div className="w-96">
+        <ControlPanel
+          description={description}
+          onDescriptionChange={setDescription}
+          onGenerate={handleGenerate}
+        />
       </div>
+
+      {/* Center Panel: Face Canvas */}
+      <FaceCanvas />
+
+      {/* Right Panel: History & Intelligence */}
+      <HistoryPanel />
     </div>
   );
 };
