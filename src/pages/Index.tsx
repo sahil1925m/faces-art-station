@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { ArrowRight, Sparkles, Shield, Clock, Database, Zap, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { HeroGeometric } from "@/components/ui/shape-landing-hero";
+import BlurText from "@/components/ui/BlurText";
 
 const Index = () => {
   return (
@@ -12,8 +13,14 @@ const Index = () => {
         badge="Next-Generation Forensic Technology"
         title1="F.A.C.E.S."
         title2="Forensic AI Composite Evolution System"
-        description="Transform witness descriptions into photorealistic composites instantly with AI-powered technology. Built for law enforcement professionals who demand accuracy, speed, and reliability."
       >
+        <BlurText
+          text="Transform witness descriptions into photorealistic composites instantly with AI-powered technology. Built for law enforcement professionals who demand accuracy, speed, and reliability."
+          delay={50}
+          animateBy="words"
+          direction="top"
+          className="text-base sm:text-lg md:text-xl text-white/40 mb-8 leading-relaxed font-light tracking-wide max-w-xl mx-auto px-4"
+        />
         <div className="flex gap-4 justify-center pt-6">
           <Link to="/composite">
             <Button size="lg" className="bg-gradient-to-r from-indigo-500 to-rose-500 text-white hover:shadow-glow transition-smooth font-semibold px-8 text-lg h-14">
