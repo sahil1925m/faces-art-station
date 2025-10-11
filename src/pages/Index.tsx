@@ -2,51 +2,30 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowRight, Sparkles, Shield, Clock, Database, Zap, Users } from "lucide-react";
 import { Link } from "react-router-dom";
+import { HeroGeometric } from "@/components/ui/shape-landing-hero";
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <section className="relative overflow-hidden border-b border-panel-border">
-        <div className="absolute inset-0 bg-gradient-panel opacity-50" />
-        <div className="absolute inset-0">
-          <div className="absolute top-20 left-20 w-72 h-72 bg-accent/10 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 right-20 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+      <HeroGeometric
+        badge="Next-Generation Forensic Technology"
+        title1="F.A.C.E.S."
+        title2="Forensic AI Composite Evolution System"
+        description="Transform witness descriptions into photorealistic composites instantly with AI-powered technology. Built for law enforcement professionals who demand accuracy, speed, and reliability."
+      >
+        <div className="flex gap-4 justify-center pt-6">
+          <Link to="/composite">
+            <Button size="lg" className="bg-gradient-to-r from-indigo-500 to-rose-500 text-white hover:shadow-glow transition-smooth font-semibold px-8 text-lg h-14">
+              Launch Composite Tool
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+          </Link>
+          <Button size="lg" variant="outline" className="border-white/20 text-white hover:bg-white/10 h-14 px-8 text-lg">
+            Watch Demo
+          </Button>
         </div>
-        
-        <div className="relative container mx-auto px-6 py-24">
-          <div className="max-w-4xl mx-auto text-center space-y-8">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 mb-6 animate-fade-in">
-              <Sparkles className="w-4 h-4 text-accent" />
-              <span className="text-sm text-accent font-medium">Next-Generation Forensic Technology</span>
-            </div>
-            
-            <h1 className="text-6xl font-bold text-foreground animate-fade-in" style={{ animationDelay: '0.1s' }}>
-              F.A.C.E.S.
-            </h1>
-            <p className="text-3xl text-muted-foreground animate-fade-in" style={{ animationDelay: '0.2s' }}>
-              Forensic AI Composite Evolution System
-            </p>
-            
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: '0.3s' }}>
-              Transform witness descriptions into photorealistic composites instantly with AI-powered technology. 
-              Built for law enforcement professionals who demand accuracy, speed, and reliability.
-            </p>
-            
-            <div className="flex gap-4 justify-center pt-6 animate-fade-in" style={{ animationDelay: '0.4s' }}>
-              <Link to="/composite">
-                <Button size="lg" className="bg-gradient-accent text-primary-foreground hover:shadow-glow transition-smooth font-semibold px-8 text-lg h-14">
-                  Launch Composite Tool
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-              <Button size="lg" variant="outline" className="border-border text-foreground hover:bg-muted h-14 px-8 text-lg">
-                Watch Demo
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
+      </HeroGeometric>
 
       {/* Features Grid */}
       <section className="container mx-auto px-6 py-24">
