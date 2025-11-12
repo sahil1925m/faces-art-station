@@ -19,6 +19,7 @@
     "framer-motion": "^11.3.11",
     "html2canvas": "^1.4.1",
     "jspdf": "^2.5.1",
+    "lovable-tagger": "^1.1.11",
     "lucide-react": "^0.417.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
