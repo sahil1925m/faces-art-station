@@ -1,25 +1,17 @@
-import { GoogleGenAI, Modality } from "@google/genai";
 import { FeatureCategory, DbMatch } from '../types';
 import { searchCriminalDatabase } from "./criminalDatabase";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-// Helper to convert data URL to blob parts for Gemini API
-const dataUrlToParts = (dataUrl: string) => {
-    const parts = dataUrl.split(',');
-    const mimeType = parts[0].match(/:(.*?);/)?.[1];
-    const data = parts[1];
-    if (!mimeType || !data) {
-        throw new Error("Invalid data URL");
-    }
-    return { mimeType, data };
-};
+const SUPABASE_URL = (import.meta as any).env.VITE_SUPABASE_URL as string;
+const SUPABASE_ANON_KEY = (import.meta as any).env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
 const handleApiError = (error: unknown, context: 'generation' | 'refinement'): never => {
     console.error(`Error during image ${context}:`, error);
     if (error instanceof Error) {
-        if (error.message.includes('API_KEY_INVALID')) {
-            throw new Error("API Key is invalid. Please check your configuration.");
+        if (error.message.includes('Rate limits exceeded')) {
+            throw new Error("Too many requests. Please try again in a moment.");
+        }
+        if (error.message.includes('Credits depleted')) {
+            throw new Error("AI credits depleted. Please contact support.");
         }
         if (error.message.toLowerCase().includes('safety')) {
             throw new Error(`${context === 'generation' ? 'Generation' : 'Refinement'} failed due to safety filters. Please try a different description.`);
@@ -32,21 +24,27 @@ export const mockApiService = {
   generateInitialComposite: async (prompt: string): Promise<string> => {
     try {
       console.log(`Generating initial composite for prompt: "${prompt}"`);
-      const response = await ai.models.generateImages({
-        model: 'imagen-4.0-generate-001',
-        prompt: `A detailed, professional, monochrome forensic sketch of a person described as: ${prompt}. Pencil on paper style, plain white background, high contrast, centered.`,
-        config: {
-          numberOfImages: 1,
-          outputMimeType: 'image/jpeg',
-          aspectRatio: '1:1',
+      
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-composite`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         },
+        body: JSON.stringify({ prompt }),
       });
 
-      if (!response.generatedImages || response.generatedImages.length === 0) {
-        throw new Error("API did not return any images.");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate composite');
       }
 
-      return `data:image/jpeg;base64,${response.generatedImages[0].image.imageBytes}`;
+      const data = await response.json();
+      if (!data.imageUrl) {
+        throw new Error("API did not return an image.");
+      }
+
+      return data.imageUrl;
     } catch (error) {
         handleApiError(error, 'generation');
     }
@@ -146,37 +144,34 @@ export const mockApiService = {
         return {"image_base64": new_image_base64}
     */
     
-    // --- FRONTEND SIMULATION ---
-    console.log(`Simulating SURGICAL refinement for feature '${featureToChange}' with prompt: "${refinementPrompt}"`);
+    // --- FRONTEND CALLING BACKEND ---
+    console.log(`Refining feature '${featureToChange}' with prompt: "${refinementPrompt}"`);
 
     try {
-        const imagePart = {
-            inlineData: dataUrlToParts(baseImage),
-        };
-        
-        let textPrompt = `SURGICAL INPAINTING MASKED EDIT: On the provided forensic sketch, find the '${featureToChange}' and replace ONLY that feature with the following description: "${refinementPrompt}". CRITICAL RULE: DO NOT change any other part of the face, hair, or background. Preserve the identity of the person.`;
-
-        if (featureToChange === 'faceShape') {
-            textPrompt = `SURGICAL INPAINTING MASKED EDIT: On the provided forensic sketch, surgically modify the overall face shape to become ${refinementPrompt}. The conceptual "mask" for this operation should cover the entire facial silhouette, including the jawline and chin, but excluding hair, ears, and neck. CRITICAL RULE: Preserve all internal facial features like eyes, nose, and mouth. Only alter the contour of the face. Do not change the background or the person's identity.`;
-        }
-        
-        const textPart = { text: textPrompt };
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image',
-            contents: { parts: [imagePart, textPart] },
-            config: {
-                responseModalities: [Modality.IMAGE],
-            },
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/refine-feature`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            baseImage,
+            featureToChange,
+            refinementPrompt,
+          }),
         });
-        
-        const firstPart = response.candidates?.[0]?.content?.parts?.[0];
-        if (firstPart && firstPart.inlineData) {
-            const base64ImageBytes = firstPart.inlineData.data;
-            const mimeType = firstPart.inlineData.mimeType;
-            return `data:${mimeType};base64,${base64ImageBytes}`;
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to refine feature');
         }
-        throw new Error("API did not return a valid image part.");
+
+        const data = await response.json();
+        if (!data.imageUrl) {
+          throw new Error("API did not return an image.");
+        }
+
+        return data.imageUrl;
     } catch (error) {
         handleApiError(error, 'refinement');
     }

@@ -1,0 +1,7 @@
+project_id = "grwjtocprguwhgfxyqsd"
+
+[functions.generate-composite]
+verify_jwt = false
+
+[functions.refine-feature]
+verify_jwt = false
