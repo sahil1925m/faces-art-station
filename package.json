@@ -9,20 +9,21 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react-dom": "^19.2.0",
-    "react": "^19.2.0",
-    "react-hot-toast": "^2.6.0",
     "@google/genai": "^1.29.0",
-    "jspdf": "^2.5.1",
-    "html2canvas": "^1.4.1",
-    "clsx": "^2.1.1",
-    "tailwind-merge": "^2.4.0",
-    "lucide-react": "^0.417.0",
+    "@radix-ui/react-dialog": "^1.1.1",
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-tooltip": "^1.1.2",
-    "@radix-ui/react-dialog": "^1.1.1",
+    "@supabase/supabase-js": "^2.81.1",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.1",
     "framer-motion": "^11.3.11",
-    "class-variance-authority": "^0.7.0"
+    "html2canvas": "^1.4.1",
+    "jspdf": "^2.5.1",
+    "lucide-react": "^0.417.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-hot-toast": "^2.6.0",
+    "tailwind-merge": "^2.4.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
