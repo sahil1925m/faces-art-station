@@ -243,12 +243,12 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="bg-[#0F172A] text-slate-100 min-h-screen flex flex-col antialiased">
+    <div className="bg-background text-foreground min-h-screen flex flex-col antialiased">
       <Toaster position="top-center" toastOptions={{
         style: {
-          background: '#1E293B',
-          color: '#F1F5F9',
-          border: '1px solid #334155'
+          background: 'hsl(var(--card))',
+          color: 'hsl(var(--foreground))',
+          border: '1px solid hsl(var(--border))'
         },
       }} />
       <Header 
