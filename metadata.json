@@ -1,0 +1,5 @@
+{
+  "name": "F.A.C.E.S. - Forensic Artificial Composite Engine System",
+  "description": "An advanced web application for law enforcement to generate and refine photorealistic forensic sketches of suspects based on witness descriptions, featuring precise, disentangled facial feature editing.",
+  "requestFramePermissions": []
+}
