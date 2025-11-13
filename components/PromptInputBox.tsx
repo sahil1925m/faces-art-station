@@ -36,7 +36,7 @@ export const PromptInputBox: React.FC<{
     }, [input]);
 
     return (
-        <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-2 flex items-start gap-3 border border-slate-700 focus-within:border-cyan-500 transition-all duration-300">
+        <div className="relative bg-black/60 backdrop-blur-md rounded-xl border border-border/50 focus-within:border-primary transition-all duration-300">
             <textarea
                 ref={textareaRef}
                 value={input}
@@ -44,22 +44,24 @@ export const PromptInputBox: React.FC<{
                 onKeyDown={handleKeyDown}
                 placeholder={placeholder}
                 rows={1}
-                className="flex-grow bg-transparent text-slate-200 placeholder-slate-400 focus:outline-none resize-none overflow-y-auto w-full p-2"
-                style={{ scrollbarWidth: 'none' }} /* Firefox */
+                className="w-full px-4 py-3 bg-transparent text-foreground placeholder-muted-foreground focus:outline-none resize-none overflow-y-auto min-h-[48px]"
+                style={{ scrollbarWidth: 'none' }}
                 disabled={isLoading}
             />
-            <button
-                onClick={handleSubmit}
-                disabled={isLoading || !input.trim()}
-                className="w-10 h-10 flex-shrink-0 bg-cyan-500 text-slate-900 rounded-full flex items-center justify-center transition-all duration-200 active:scale-95 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
-                aria-label={isLoading ? "Generating..." : "Send prompt"}
-            >
-                {isLoading ? (
-                    <LoaderCircle className="h-5 w-5 animate-spin" />
-                ) : (
-                    <ArrowUp className="h-5 w-5" />
-                )}
-            </button>
+            <div className="flex items-center justify-end p-3 pt-0">
+                <button
+                    onClick={handleSubmit}
+                    disabled={isLoading || !input.trim()}
+                    className="flex items-center gap-1 px-3 py-2 rounded-lg transition-all duration-200 active:scale-95 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed"
+                    aria-label={isLoading ? "Generating..." : "Send prompt"}
+                >
+                    {isLoading ? (
+                        <LoaderCircle className="h-4 w-4 animate-spin" />
+                    ) : (
+                        <ArrowUp className="h-4 w-4" />
+                    )}
+                </button>
+            </div>
         </div>
     );
 };
