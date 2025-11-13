@@ -20,7 +20,7 @@
     "html2canvas": "^1.4.1",
     "jspdf": "^2.5.1",
     "lovable-tagger": "^1.1.11",
-    "lucide-react": "^0.417.0",
+    "lucide-react": "^0.553.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-hot-toast": "^2.6.0",
