@@ -18,17 +18,17 @@ const VisualCategory: React.FC<VisualCategoryProps> = ({ category, onSelect, isD
     };
 
     return (
-        <div className="bg-slate-800/50 rounded-lg overflow-hidden border border-slate-700">
+        <div className="bg-card/40 border border-border rounded-xl overflow-hidden transition-colors hover:border-primary/30">
             <motion.button
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex justify-between items-center p-3 text-left font-semibold text-slate-200 hover:bg-slate-700/50"
-                whileTap={{ scale: 0.98 }}
+                className="w-full flex justify-between items-center p-3 text-left font-medium text-white hover:bg-white/5 transition-colors"
+                whileTap={{ scale: 0.99 }}
             >
-                {category.name}
+                <span className="text-sm tracking-wide">{category.name}</span>
                 <motion.svg
                     animate={{ rotate: isOpen ? 180 : 0 }}
                     transition={{ duration: 0.3 }}
-                    className={`w-5 h-5`}
+                    className={`w-4 h-4 text-white/60`}
                     xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                 >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />

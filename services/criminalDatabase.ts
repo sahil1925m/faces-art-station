@@ -5,55 +5,55 @@ import { DbMatch } from '../types';
 const criminalDatabase: Omit<DbMatch, 'score'>[] = [
     {
         subjectId: '49B-K1',
-        imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/William_Raymond_Nesbit_mugshot.jpg/800px-William_Raymond_Nesbit_mugshot.jpg'
+        imageUrl: '/criminals/mini (1).webp'
     },
     {
         subjectId: '88G-P4',
-        imageUrl: 'https://www.alcatrazhistory.com/grwright.jpg'
+        imageUrl: '/criminals/mini (2).webp'
     },
     {
         subjectId: '72H-L9',
-        imageUrl: 'https://www.alcatrazhistory.com/guralnick.jpg'
+        imageUrl: '/criminals/mini (3).webp'
     },
     {
         subjectId: '33C-L5',
-        imageUrl: 'https://www.alcatrazhistory.com/shelton.jpg'
+        imageUrl: '/criminals/mini (4).webp'
     },
     {
         subjectId: '91F-T2',
-        imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/e/ec/Frederick_J._Tenuto.jpg'
+        imageUrl: '/criminals/mini (5).webp'
     },
     {
         subjectId: '71E-V2',
-        imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/4/4b/Courtney_Townsend_Taylor.jpg'
+        imageUrl: '/criminals/mini (6).webp'
     },
     {
         subjectId: '55K-M3',
-        imageUrl: 'https://www.alcatrazhistory.com/kling.jpg'
+        imageUrl: '/criminals/mini (7).webp'
     },
     {
         subjectId: '48J-B6',
-        imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ed/Joseph_James_Brletic.jpg/800px-Joseph_James_Brletic.jpg'
+        imageUrl: '/criminals/mini (8).webp'
     },
     {
         subjectId: '12A-Z9',
-        imageUrl: 'https://www.alcatrazhistory.com/pinson.jpg'
+        imageUrl: '/criminals/mini (9).webp'
     },
     {
         subjectId: '63A-K7',
-        imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Alvin_Karpis_mug_shot.jpg/800px-Alvin_Karpis_mug_shot.jpg'
+        imageUrl: '/criminals/mini (10).webp'
     },
     {
         subjectId: '29M-T1',
-        imageUrl: 'https://upload.wikimedia.org/wikipedia/en/c/cb/Miran_Edgar_Thompson_Alcatraz.jpg'
+        imageUrl: '/criminals/mini.webp'
     },
     {
         subjectId: '84B-B2',
-        imageUrl: 'https://upload.wikimedia.org/wikipedia/en/e/e6/Basil_Banghart_Alcatraz.jpg'
+        imageUrl: '/criminals/mini.jpeg'
     },
-     {
+    {
         subjectId: '19C-C8',
-        imageUrl: 'https://upload.wikimedia.org/wikipedia/en/0/03/Clarence_Carnes_Alcatraz.jpg'
+        imageUrl: '/criminals/large.jpeg'
     },
 ];
 
@@ -62,7 +62,7 @@ const criminalDatabase: Omit<DbMatch, 'score'>[] = [
 export const searchCriminalDatabase = (): DbMatch[] => {
     // Shuffle the database to get a random order
     const shuffled = [...criminalDatabase].sort(() => 0.5 - Math.random());
-    
+
     // Take a random number of results (e.g., between 3 and 6)
     const numResults = Math.floor(Math.random() * 4) + 3;
     const selected = shuffled.slice(0, numResults);
@@ -70,7 +70,7 @@ export const searchCriminalDatabase = (): DbMatch[] => {
     // Assign a mock similarity score to each result
     const resultsWithScores: DbMatch[] = selected.map((criminal, index) => {
         // Make the scores decrease to seem more realistic
-        const baseScore = 95 - (index * (Math.random() * 5 + 5)); 
+        const baseScore = 95 - (index * (Math.random() * 5 + 5));
         const score = Math.max(60, Math.floor(baseScore - Math.random() * 5));
         return {
             ...criminal,

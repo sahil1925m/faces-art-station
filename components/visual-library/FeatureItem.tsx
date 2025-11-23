@@ -25,7 +25,7 @@ const FeatureItem: React.FC<FeatureItemProps> = ({ feature, onSelect, isDisabled
         >
             {/* Placeholder for visual example */}
             <div className="w-full aspect-square bg-slate-600 rounded-sm flex items-center justify-center">
-                <span className="text-slate-500 text-xs text-center">{feature.label}</span>
+                <span className="text-white text-xs text-center">{feature.label}</span>
             </div>
         </motion.button>
     );
