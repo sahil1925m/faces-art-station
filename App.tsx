@@ -10,7 +10,7 @@ import { Toaster, toast } from 'react-hot-toast';
 import RefinementPrompt from './components/RefinementPrompt';
 import jsPDF from 'jspdf';
 import DatabaseMatchModal from './components/DatabaseMatchModal';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const App: React.FC = () => {
   const [step, setStep] = React.useState<'PROMPT' | 'REFINE'>('PROMPT');
@@ -54,6 +54,49 @@ const App: React.FC = () => {
       setIsLoading(false);
     }
   }, []);
+
+  const handleBatchRefinement = React.useCallback(async (
+    refinements: { category: FeatureCategory; featureName: string; prompt: string }[]
+  ) => {
+    if (refinements.length === 0) return;
+
+    setIsLoading(true);
+    const description = `Applied ${refinements.length} refinements: ${refinements.map(r => r.featureName).join(', ')}`;
+    const toastId = toast.loading(`Applying ${refinements.length} refinements...`);
+
+    try {
+      // Combine prompts
+      const combinedRefinementPrompt = refinements.map(r => r.prompt).join(', ');
+
+      // We use the first category for the API call, or 'inferred' if mixed. 
+      const category = refinements.length === 1 ? refinements[0].category : 'inferred';
+
+      const { imageUrl: newImageUrl, updatedPrompt } = await mockApiService.refineFeature(
+        currentPrompt,
+        seed,
+        category,
+        combinedRefinementPrompt
+      );
+
+      setCurrentImage(newImageUrl);
+      setCurrentPrompt(updatedPrompt);
+
+      const newHistoryEntry: HistoryEntry = {
+        id: crypto.randomUUID(),
+        timestamp: new Date().toLocaleTimeString(),
+        imageUrl: newImageUrl,
+        change: description,
+      };
+      setHistory(prev => [newHistoryEntry, ...prev]);
+      toast.success("Refinements complete!", { id: toastId });
+    } catch (error) {
+      console.error(error);
+      const errorMessage = error instanceof Error ? error.message : "Refinement failed. Please try again.";
+      toast.error(errorMessage, { id: toastId });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentPrompt, seed]);
 
   const handleRefinement = React.useCallback(async (
     featureCategory: FeatureCategory | 'inferred',
@@ -217,47 +260,144 @@ const App: React.FC = () => {
     setIsSearchModalOpen(false);
   };
 
+  const [mobileTab, setMobileTab] = React.useState<'VIEW' | 'EDIT' | 'HISTORY'>('VIEW');
+
   const renderContent = () => {
     switch (step) {
       case 'PROMPT':
         return <HomeScreen onGenerate={handleGenerateInitialComposite} isLoading={isLoading} />;
       case 'REFINE':
         return (
-          <motion.div
-            className="grid grid-cols-1 lg:grid-cols-[320px_1fr_280px] gap-4 h-full overflow-hidden relative z-10"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-          >
-            {/* Left Panel: Controls */}
-            <div className="h-full overflow-hidden">
-              <ControlPanel
-                onVisualRefine={(cat, name, prompt) => handleRefinement(cat, `Set ${name}`, prompt)}
-                isLoading={isLoading}
-              />
-            </div>
-
-            {/* Center Panel: Canvas & Prompt */}
-            <div className="flex flex-col gap-4 h-full overflow-hidden">
-              <div className="flex-1 min-h-0">
-                <Canvas
-                  currentImage={currentImage}
+          <div className="h-full flex flex-col overflow-hidden relative z-10">
+            {/* Desktop Layout (lg+) */}
+            <motion.div
+              className="hidden lg:grid lg:grid-cols-[320px_1fr_280px] gap-4 h-full overflow-hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+            >
+              {/* Left Panel: Controls */}
+              <div className="h-full overflow-hidden">
+                <ControlPanel
+                  onVisualRefine={handleBatchRefinement}
                   isLoading={isLoading}
                 />
               </div>
-              <div className="flex-shrink-0">
-                <RefinementPrompt
-                  onRefine={(prompt) => handleRefinement('inferred', prompt, prompt)}
-                  isLoading={isLoading}
-                />
+
+              {/* Center Panel: Canvas & Prompt */}
+              <div className="flex flex-col gap-4 h-full overflow-hidden">
+                <div className="flex-1 min-h-0">
+                  <Canvas
+                    currentImage={currentImage}
+                    isLoading={isLoading}
+                  />
+                </div>
+                <div className="flex-shrink-0">
+                  <RefinementPrompt
+                    onRefine={(prompt) => handleRefinement('inferred', prompt, prompt)}
+                    isLoading={isLoading}
+                  />
+                </div>
+              </div>
+
+              {/* Right Panel: History */}
+              <div className="h-full overflow-hidden">
+                <HistoryPanel history={history} onSelectHistory={handleHistorySelect} />
+              </div>
+            </motion.div>
+
+            {/* Mobile Layout (< lg) */}
+            <div className="lg:hidden flex-1 flex flex-col min-h-0 overflow-hidden relative">
+              <div className="flex-1 overflow-hidden p-1">
+                <AnimatePresence mode="wait">
+                  {mobileTab === 'VIEW' && (
+                    <motion.div
+                      key="view"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      transition={{ duration: 0.2 }}
+                      className="h-full flex flex-col gap-2"
+                    >
+                      <div className="flex-1 min-h-0">
+                        <Canvas currentImage={currentImage} isLoading={isLoading} />
+                      </div>
+                      <div className="flex-shrink-0">
+                        <RefinementPrompt
+                          onRefine={(prompt) => handleRefinement('inferred', prompt, prompt)}
+                          isLoading={isLoading}
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {mobileTab === 'EDIT' && (
+                    <motion.div
+                      key="edit"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      transition={{ duration: 0.2 }}
+                      className="h-full"
+                    >
+                      <ControlPanel
+                        onVisualRefine={handleBatchRefinement}
+                        isLoading={isLoading}
+                      />
+                    </motion.div>
+                  )}
+
+                  {mobileTab === 'HISTORY' && (
+                    <motion.div
+                      key="history"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      transition={{ duration: 0.2 }}
+                      className="h-full"
+                    >
+                      <HistoryPanel history={history} onSelectHistory={handleHistorySelect} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Mobile Bottom Navigation */}
+              <div className="flex-shrink-0 mt-2 bg-black/80 backdrop-blur-md border-t border-white/10 p-2 rounded-t-2xl">
+                <div className="flex justify-around items-center">
+                  <button
+                    onClick={() => setMobileTab('EDIT')}
+                    className={`flex flex-col items-center p-2 rounded-xl transition-all ${mobileTab === 'EDIT' ? 'text-primary bg-white/10' : 'text-white/50 hover:text-white/80'}`}
+                  >
+                    <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                    </svg>
+                    <span className="text-[10px] font-medium">Controls</span>
+                  </button>
+
+                  <button
+                    onClick={() => setMobileTab('VIEW')}
+                    className={`flex flex-col items-center p-2 rounded-xl transition-all ${mobileTab === 'VIEW' ? 'text-primary bg-white/10' : 'text-white/50 hover:text-white/80'}`}
+                  >
+                    <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span className="text-[10px] font-medium">Canvas</span>
+                  </button>
+
+                  <button
+                    onClick={() => setMobileTab('HISTORY')}
+                    className={`flex flex-col items-center p-2 rounded-xl transition-all ${mobileTab === 'HISTORY' ? 'text-primary bg-white/10' : 'text-white/50 hover:text-white/80'}`}
+                  >
+                    <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-[10px] font-medium">History</span>
+                  </button>
+                </div>
               </div>
             </div>
-
-            {/* Right Panel: History */}
-            <div className="h-full overflow-hidden">
-              <HistoryPanel history={history} onSelectHistory={handleHistorySelect} />
-            </div>
-          </motion.div>
+          </div>
         );
       default:
         return null;

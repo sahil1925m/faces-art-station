@@ -7,9 +7,10 @@ interface VisualCategoryProps {
     category: VisualFeatureCategory;
     onSelect: (featureName: string, featurePrompt: string) => void;
     isDisabled: boolean;
+    selectedFeatures?: Set<string>;
 }
 
-const VisualCategory: React.FC<VisualCategoryProps> = ({ category, onSelect, isDisabled }) => {
+const VisualCategory: React.FC<VisualCategoryProps> = ({ category, onSelect, isDisabled, selectedFeatures }) => {
     const [isOpen, setIsOpen] = React.useState(true);
 
     const variants = {
@@ -51,6 +52,7 @@ const VisualCategory: React.FC<VisualCategoryProps> = ({ category, onSelect, isD
                                     feature={feature}
                                     onSelect={onSelect}
                                     isDisabled={isDisabled}
+                                    isSelected={selectedFeatures?.has(feature.label)}
                                 />
                             ))}
                         </div>

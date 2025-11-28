@@ -6,9 +6,10 @@ interface FeatureItemProps {
     feature: VisualFeature;
     onSelect: (featureName: string, featurePrompt: string) => void;
     isDisabled: boolean;
+    isSelected?: boolean;
 }
 
-const FeatureItem: React.FC<FeatureItemProps> = ({ feature, onSelect, isDisabled }) => {
+const FeatureItem: React.FC<FeatureItemProps> = ({ feature, onSelect, isDisabled, isSelected }) => {
     const handleClick = () => {
         if (!isDisabled) {
             onSelect(feature.label, feature.prompt);
@@ -19,7 +20,10 @@ const FeatureItem: React.FC<FeatureItemProps> = ({ feature, onSelect, isDisabled
             onClick={handleClick}
             disabled={isDisabled}
             title={feature.label}
-            className="group flex flex-col items-center gap-2 p-2 rounded-md border-2 border-slate-600 bg-slate-700/50 hover:border-cyan-500 hover:bg-cyan-500/10 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            className={`group flex flex-col items-center gap-2 p-2 rounded-md border-2 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-cyan-500 ${isSelected
+                    ? 'border-cyan-400 bg-cyan-500/20 shadow-[0_0_10px_rgba(34,211,238,0.3)]'
+                    : 'border-slate-600 bg-slate-700/50 hover:border-cyan-500 hover:bg-cyan-500/10 disabled:hover:border-slate-600'
+                }`}
             whileTap={{ scale: 0.95 }}
             transition={{ duration: 0.1 }}
         >
