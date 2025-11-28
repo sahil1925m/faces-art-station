@@ -18,18 +18,24 @@ const App: React.FC = () => {
   const [currentImage, setCurrentImage] = React.useState<string>('');
   const [history, setHistory] = React.useState<HistoryEntry[]>([]);
   const [initialPrompt, setInitialPrompt] = React.useState('');
+  const [currentPrompt, setCurrentPrompt] = React.useState('');
+  const [seed, setSeed] = React.useState<number>(0);
   const [caseNumber, setCaseNumber] = React.useState('');
   const [isSearchingDb, setIsSearchingDb] = React.useState(false);
   const [dbMatches, setDbMatches] = React.useState<DbMatch[]>([]);
   const [isSearchModalOpen, setIsSearchModalOpen] = React.useState(false);
 
-
   const handleGenerateInitialComposite = React.useCallback(async (prompt: string) => {
     setIsLoading(true);
     setInitialPrompt(prompt);
+    setCurrentPrompt(prompt);
+
+    const newSeed = Math.floor(Math.random() * 1000000);
+    setSeed(newSeed);
+
     const toastId = toast.loading("Generating initial composite sketch...");
     try {
-      const imageUrl = await mockApiService.generateInitialComposite(prompt);
+      const imageUrl = await mockApiService.generateInitialComposite(prompt, newSeed);
       setCurrentImage(imageUrl);
       const newHistoryEntry: HistoryEntry = {
         id: crypto.randomUUID(),
@@ -62,16 +68,20 @@ const App: React.FC = () => {
     setIsLoading(true);
     const toastId = toast.loading(`Applying refinement: ${changeDescription}...`);
     try {
-      const newImageUrl = await mockApiService.refineFeature(currentImage, featureCategory, featurePrompt);
-      // Append timestamp to force browser to reload image if URL is the same
-      const separator = newImageUrl.includes('?') ? '&' : '?';
-      const imageUrlWithCacheBust = `${newImageUrl}${separator}t=${Date.now()}`;
-      setCurrentImage(imageUrlWithCacheBust);
+      const { imageUrl: newImageUrl, updatedPrompt } = await mockApiService.refineFeature(
+        currentPrompt,
+        seed,
+        featureCategory,
+        featurePrompt
+      );
+
+      setCurrentImage(newImageUrl);
+      setCurrentPrompt(updatedPrompt);
 
       const newHistoryEntry: HistoryEntry = {
         id: crypto.randomUUID(),
         timestamp: new Date().toLocaleTimeString(),
-        imageUrl: imageUrlWithCacheBust,
+        imageUrl: newImageUrl,
         change: changeDescription,
       };
       setHistory(prev => [newHistoryEntry, ...prev]);
@@ -83,15 +93,13 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentImage]);
-
+  }, [currentPrompt, seed]);
 
   const handleHistorySelect = React.useCallback((entry: HistoryEntry) => {
     if (isLoading) return;
     setCurrentImage(entry.imageUrl);
     toast.success("Restored state from history.");
   }, [isLoading]);
-
 
   const handleExportToPdf = async () => {
     if (!currentImage) {
