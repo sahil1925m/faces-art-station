@@ -24,6 +24,12 @@ export default {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        // Custom Theme Colors
+        "deep-void": "#0B0D12",
+        "gunmetal": "#161920",
+        "electric-cyan": "#22D3EE",
+        "muted-slate": "#94A3B8",
+        "soft-gray": "#CBD5E1",
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",

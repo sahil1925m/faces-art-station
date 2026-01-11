@@ -1,13 +1,13 @@
 export type AppStep = 'PROMPT' | 'SELECT' | 'REFINE';
 
 export interface HistoryEntry {
-  id: string;
-  timestamp: string;
-  imageUrl: string;
-  change: string;
+    id: string;
+    timestamp: string;
+    imageUrl: string;
+    change: string;
 }
 
-export type FeatureCategory = 'faceShape' | 'hairStyle' | 'facialHair' | 'eyebrows' | 'eyes' | 'nose' | 'lips' | 'jawline' | 'accessories' | 'expression';
+export type FeatureCategory = 'faceShape' | 'hairStyle' | 'facialHair' | 'eyebrows' | 'eyes' | 'nose' | 'lips' | 'jawline' | 'accessories' | 'expression' | 'cheekbones' | 'ears' | 'skinAge';
 
 // FIX: Added missing HairStyle and EyebrowStyle types to resolve import errors.
 export type HairStyle = 'bald' | 'short' | 'medium' | 'long';
@@ -17,7 +17,7 @@ export interface VisualFeature {
     label: string;
     // In a real app, this would be a URL to a pre-rendered example image
     // For this demo, we can use it to generate a placeholder
-    preview: string; 
+    preview: string;
     prompt: string;
 }
 
@@ -31,4 +31,26 @@ export interface DbMatch {
     subjectId: string;
     score: number;
     imageUrl: string;
+}
+
+export interface Message {
+    id: string;
+    role: 'user' | 'assistant';
+    content: string;
+    timestamp: Date;
+}
+
+export interface InterviewData {
+    age?: string;
+    gender?: string;
+    faceShape?: string;
+    build?: string;
+    hairStyle?: string;
+    hairColor?: string;
+    hairTexture?: string;
+    eyeColor?: string;
+    eyeShape?: string;
+    eyeSize?: string;
+    noseShape?: string;
+    distinctiveFeatures?: string[];
 }

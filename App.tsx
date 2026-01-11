@@ -11,9 +11,16 @@ import RefinementPrompt from './components/RefinementPrompt';
 import jsPDF from 'jspdf';
 import DatabaseMatchModal from './components/DatabaseMatchModal';
 import { motion, AnimatePresence } from 'framer-motion';
+import DashboardLayout from './components/DashboardLayout';
+import ResizableSplitPane from './components/ResizableSplitPane';
+import LandingPage from './components/LandingPage';
+import ChatInterface from './components/chat/ChatInterface'; // Use ChatInterface for the interview part
 
 const App: React.FC = () => {
-  const [step, setStep] = React.useState<'PROMPT' | 'REFINE'>('PROMPT');
+  // 'LANDING' -> 'INTERVIEW' (ChatInterface) -> 'DASHBOARD' (Canvas/Refine)
+  const [view, setView] = React.useState<'LANDING' | 'INTERVIEW' | 'DASHBOARD'>('LANDING');
+
+  // Existing state
   const [isLoading, setIsLoading] = React.useState(false);
   const [currentImage, setCurrentImage] = React.useState<string>('');
   const [history, setHistory] = React.useState<HistoryEntry[]>([]);
@@ -25,6 +32,12 @@ const App: React.FC = () => {
   const [dbMatches, setDbMatches] = React.useState<DbMatch[]>([]);
   const [isSearchModalOpen, setIsSearchModalOpen] = React.useState(false);
 
+  // Called when "Start Interview" is clicked on Landing Page
+  const startInterview = () => {
+    setView('INTERVIEW');
+  };
+
+  // Called when Chat Interface completes interview
   const handleGenerateInitialComposite = React.useCallback(async (prompt: string) => {
     setIsLoading(true);
     setInitialPrompt(prompt);
@@ -35,6 +48,14 @@ const App: React.FC = () => {
 
     const toastId = toast.loading("Generating initial composite sketch...");
     try {
+      // Switch view immediately or after generation? 
+      // Let's generate first then switch, or show loading state.
+      // Since we want to show result on dashboard, we switch to DASHBOARD but keep loading state if possible,
+      // OR we wait for generation. 
+      // Existing logic waits. Let's switch view to DASHBOARD immediately so user sees the skeleton UI?
+      // Actually, better to stay on chat until generated or show a transition.
+      // Let's follow existing logic: call API, then switch.
+
       const imageUrl = await mockApiService.generateInitialComposite(prompt, newSeed);
       setCurrentImage(imageUrl);
       const newHistoryEntry: HistoryEntry = {
@@ -44,7 +65,9 @@ const App: React.FC = () => {
         change: 'Initial Composite Generated',
       };
       setHistory([newHistoryEntry]);
-      setStep('REFINE');
+
+      setView('DASHBOARD'); // Switch to main dashboard
+
       toast.success("Initial composite generated!", { id: toastId });
     } catch (error) {
       console.error(error);
@@ -67,11 +90,10 @@ const App: React.FC = () => {
     try {
       // Combine prompts
       const combinedRefinementPrompt = refinements.map(r => r.prompt).join(', ');
-
-      // We use the first category for the API call, or 'inferred' if mixed. 
       const category = refinements.length === 1 ? refinements[0].category : 'inferred';
 
       const { imageUrl: newImageUrl, updatedPrompt } = await mockApiService.refineFeature(
+        currentImage,
         currentPrompt,
         seed,
         category,
@@ -96,7 +118,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPrompt, seed]);
+  }, [currentPrompt, seed, currentImage]);
 
   const handleRefinement = React.useCallback(async (
     featureCategory: FeatureCategory | 'inferred',
@@ -112,6 +134,7 @@ const App: React.FC = () => {
     const toastId = toast.loading(`Applying refinement: ${changeDescription}...`);
     try {
       const { imageUrl: newImageUrl, updatedPrompt } = await mockApiService.refineFeature(
+        currentImage,
         currentPrompt,
         seed,
         featureCategory,
@@ -136,7 +159,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPrompt, seed]);
+  }, [currentPrompt, seed, currentImage]);
 
   const handleHistorySelect = React.useCallback((entry: HistoryEntry) => {
     if (isLoading) return;
@@ -251,7 +274,12 @@ const App: React.FC = () => {
 
 
   const resetToPrompt = () => {
-    setStep('PROMPT');
+    setView('LANDING'); // Go back to landing page? Or Interview? let's go to Landing for full reset.
+    // Or maybe just back to interview? 
+    // "Reset" usually implies starting similar workflow. Let's go to INTERVIEW.
+    // But if we want 'Home', maybe LANDING is better. 
+    // Let's stick to Landing for "New Case".
+    setView('LANDING');
     setCurrentImage('');
     setHistory([]);
     setInitialPrompt('');
@@ -263,48 +291,55 @@ const App: React.FC = () => {
   const [mobileTab, setMobileTab] = React.useState<'VIEW' | 'EDIT' | 'HISTORY'>('VIEW');
 
   const renderContent = () => {
-    switch (step) {
-      case 'PROMPT':
-        return <HomeScreen onGenerate={handleGenerateInitialComposite} isLoading={isLoading} />;
-      case 'REFINE':
+    switch (view) {
+      case 'LANDING':
+        return <LandingPage onStart={startInterview} />;
+      case 'INTERVIEW':
+        return (
+          <div className="h-full w-full flex items-center justify-center p-4">
+            <ChatInterface onGenerate={handleGenerateInitialComposite} isLoading={isLoading} />
+          </div>
+        );
+      case 'DASHBOARD':
         return (
           <div className="h-full flex flex-col overflow-hidden relative z-10">
             {/* Desktop Layout (lg+) */}
-            <motion.div
-              className="hidden lg:grid lg:grid-cols-[320px_1fr_280px] gap-4 h-full overflow-hidden"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5 }}
-            >
-              {/* Left Panel: Controls */}
-              <div className="h-full overflow-hidden">
-                <ControlPanel
-                  onVisualRefine={handleBatchRefinement}
-                  isLoading={isLoading}
-                />
-              </div>
-
-              {/* Center Panel: Canvas & Prompt */}
-              <div className="flex flex-col gap-4 h-full overflow-hidden">
-                <div className="flex-1 min-h-0">
-                  <Canvas
-                    currentImage={currentImage}
+            <div className="hidden lg:block h-full">
+              <DashboardLayout
+                leftSidebar={
+                  <ControlPanel
+                    onVisualRefine={handleBatchRefinement}
                     isLoading={isLoading}
                   />
-                </div>
-                <div className="flex-shrink-0">
-                  <RefinementPrompt
-                    onRefine={(prompt) => handleRefinement('inferred', prompt, prompt)}
-                    isLoading={isLoading}
-                  />
-                </div>
-              </div>
-
-              {/* Right Panel: History */}
-              <div className="h-full overflow-hidden">
-                <HistoryPanel history={history} onSelectHistory={handleHistorySelect} />
-              </div>
-            </motion.div>
+                }
+                centerPanel={
+                  <>
+                    <ResizableSplitPane
+                      initialTopHeight="70%"
+                      top={
+                        <div className="w-full h-full pb-2">
+                          <Canvas
+                            currentImage={currentImage}
+                            isLoading={isLoading}
+                          />
+                        </div>
+                      }
+                      bottom={
+                        <div className="w-full h-full pt-2 overflow-y-auto custom-scrollbar">
+                          <RefinementPrompt
+                            onRefine={(prompt) => handleRefinement('inferred', prompt, prompt)}
+                            isLoading={isLoading}
+                          />
+                        </div>
+                      }
+                    />
+                  </>
+                }
+                rightSidebar={
+                  <HistoryPanel history={history} onSelectHistory={handleHistorySelect} />
+                }
+              />
+            </div>
 
             {/* Mobile Layout (< lg) */}
             <div className="lg:hidden flex-1 flex flex-col min-h-0 overflow-hidden relative">
@@ -417,17 +452,20 @@ const App: React.FC = () => {
         },
       }} />
       <div className="relative z-10 w-full">
-        <Header
-          onReset={resetToPrompt}
-          showControls={step === 'REFINE'}
-          onExport={handleExportToPdf}
-          caseNumber={caseNumber}
-          onCaseNumberChange={setCaseNumber}
-          onSearch={handleDatabaseSearch}
-          isSearchEnabled={!!currentImage && !isLoading && !isSearchingDb}
-        />
+        {/* Only show header in Dashboard/Interview modes if desired, but kept for all for now or maybe hide on Landing */}
+        {view !== 'LANDING' && (
+          <Header
+            onReset={resetToPrompt}
+            showControls={view === 'DASHBOARD'}
+            onExport={handleExportToPdf}
+            caseNumber={caseNumber}
+            onCaseNumberChange={setCaseNumber}
+            onSearch={handleDatabaseSearch}
+            isSearchEnabled={!!currentImage && !isLoading && !isSearchingDb}
+          />
+        )}
       </div>
-      <main className="flex-grow flex flex-col p-4 pt-0 overflow-hidden relative z-10">
+      <main className={`flex-grow flex flex-col ${view !== 'LANDING' ? 'p-4 pt-0' : ''} overflow-hidden relative z-10`}>
         {renderContent()}
       </main>
       {isSearchModalOpen && (

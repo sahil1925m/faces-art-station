@@ -138,9 +138,9 @@ const RuixenMoonChat = forwardRef<RuixenMoonChatRef, RuixenMoonChatProps>(
       <div className="fixed inset-0 w-full h-full overflow-hidden bg-black">
         {/* Full Screen Background */}
         <div
-          className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat z-0"
+          className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat z-0 bg-black transition-opacity"
           style={{
-            backgroundImage: "url('https://pub-940ccf6255b54fa799a9b01050e6c227.r2.dev/ruixen_moon_2.png')",
+            backgroundImage: "url('/backgrounds/home-bg.png')",
           }}
         />
 

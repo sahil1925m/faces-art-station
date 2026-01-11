@@ -50,6 +50,7 @@ const VisualCategory: React.FC<VisualCategoryProps> = ({ category, onSelect, isD
                                 <FeatureItem
                                     key={feature.label}
                                     feature={feature}
+                                    categoryId={category.id}
                                     onSelect={onSelect}
                                     isDisabled={isDisabled}
                                     isSelected={selectedFeatures?.has(feature.label)}

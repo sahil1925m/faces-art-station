@@ -2,11 +2,118 @@ import { FeatureCategory, DbMatch } from '../types';
 import { searchCriminalDatabase } from "./criminalDatabase";
 
 const POLLINATIONS_URL = 'https://image.pollinations.ai/prompt';
+const BACKEND_URL = 'http://localhost:8000/api/refine-feature';
 
 const handleApiError = (error: unknown, context: 'generation' | 'refinement'): never => {
   console.error(`Error during image ${context}:`, error);
   const originalMessage = error instanceof Error ? error.message : 'Unknown error';
   throw new Error(`Failed to ${context === 'generation' ? 'generate composite' : 'refine image'}: ${originalMessage}`);
+}
+
+/**
+ * Convert an image URL to base64 data URI
+ */
+async function imageUrlToBase64(imageUrl: string): Promise<string> {
+  // If already base64, return as-is
+  if (imageUrl.startsWith('data:image')) {
+    return imageUrl;
+  }
+
+  try {
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.statusText}`);
+    }
+
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error("Failed to convert image to base64:", error);
+    throw error;
+  }
+}
+
+/**
+ * Infer the feature category from the refinement prompt
+ */
+function inferFeatureFromPrompt(prompt: string): FeatureCategory {
+  const lowerPrompt = prompt.toLowerCase();
+
+  // Hair-related
+  if (/\b(hair|hairstyle|bald|curly|wavy|straight|afro|ponytail|braids?|dreads?|mohawk|buzz\s?cut|fade)\b/.test(lowerPrompt)) {
+    return 'hairStyle';
+  }
+
+  // Eyebrows
+  if (/\b(eyebrow|brow|bushy|thin\s+brows?|arched|unibrow)\b/.test(lowerPrompt)) {
+    return 'eyebrows';
+  }
+
+  // Eyes
+  if (/\b(eye|eyes|eyelid|pupil|iris|glasses|sunglasses|eye\s*color)\b/.test(lowerPrompt)) {
+    return 'eyes';
+  }
+
+  // Nose
+  if (/\b(nose|nostril|bridge|nasal)\b/.test(lowerPrompt)) {
+    return 'nose';
+  }
+
+  // Mouth/Lips
+  if (/\b(mouth|lip|lips|teeth|smile|smiling|frown|grin)\b/.test(lowerPrompt)) {
+    return 'lips';
+  }
+
+  // Facial hair
+  if (/\b(beard|mustache|moustache|goatee|stubble|clean\s*shaven|facial\s*hair|sideburns?|whiskers?)\b/.test(lowerPrompt)) {
+    return 'facialHair';
+  }
+
+  // Face shape/jaw
+  if (/\b(jaw|jawline|chin|face\s*shape|cheek|cheekbone|oval|round|square|angular)\b/.test(lowerPrompt)) {
+    return 'faceShape';
+  }
+
+  // Skin/Age
+  if (/\b(skin|wrinkle|age|older|younger|scar|freckle|mole|complexion|acne)\b/.test(lowerPrompt)) {
+    return 'skinAge';
+  }
+
+  // Default to face for general refinements
+  return 'faceShape';
+}
+
+/**
+ * Map FeatureCategory to the mask feature name expected by the backend
+ */
+function mapCategoryToMaskName(category: FeatureCategory | 'inferred', prompt: string): string {
+  // If 'inferred', try to detect from prompt
+  if (category === 'inferred') {
+    category = inferFeatureFromPrompt(prompt);
+  }
+
+  const categoryMaskMap: Record<FeatureCategory, string> = {
+    'hairStyle': 'hair',
+    'eyebrows': 'eyebrows',
+    'eyes': 'eyes',
+    'nose': 'nose',
+    'lips': 'mouth',
+    'facialHair': 'beard',
+    'faceShape': 'jaw',
+    'jawline': 'jaw',
+    'cheekbones': 'face',
+    'ears': 'face',
+    'skinAge': 'face',
+    'accessories': 'face',
+    'expression': 'face',
+  };
+
+  return categoryMaskMap[category] || 'face';
 }
 
 export const mockApiService = {
@@ -20,20 +127,19 @@ export const mockApiService = {
       const seedParam = seed ? `&seed=${seed}` : '';
       const imageUrl = `${POLLINATIONS_URL}/${encodedPrompt}?nologo=true${seedParam}`;
 
-      // Verify image is accessible (optional, but good for UX)
-      const response = await fetch(imageUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch image from Pollinations AI: ${response.statusText}`);
-      }
-
-      return response.url;
+      // Return URL immediately - let the <img> tag handle loading
+      // Pollinations API generates the image when the URL is accessed
+      // This provides much faster perceived response time
+      console.log("Returning image URL for lazy loading:", imageUrl);
+      return imageUrl;
     } catch (error) {
       handleApiError(error, 'generation');
     }
   },
 
   refineFeature: async (
-    currentPrompt: string, // Changed from baseImage to currentPrompt to support regeneration
+    currentImage: string, // Could be URL or base64
+    currentPrompt: string,
     seed: number,
     featureToChange: FeatureCategory | 'inferred',
     refinementPrompt: string
@@ -42,20 +148,63 @@ export const mockApiService = {
     console.log(`Refining feature '${featureToChange}' with prompt: "${refinementPrompt}"`);
 
     try {
-      // Construct a new prompt based on the refinement
-      // In a real LLM-backed system, we'd ask the LLM to merge the prompts.
-      // Here, we'll append the refinement if it's not already there, or just rely on the user's "currentPrompt" state being updated in App.tsx
+      // Step 1: Convert image URL to base64 if needed
+      console.log("Converting image to base64...");
+      const base64Image = await imageUrlToBase64(currentImage);
+      console.log("Image converted, length:", base64Image.length);
 
-      // Simple strategy: Append the refinement to the prompt if it's a specific feature change
-      // For 'inferred', we assume the prompt passed in IS the full new prompt or a modification.
+      // Step 2: Infer the correct feature from the prompt if category is 'inferred'
+      const maskFeatureName = mapCategoryToMaskName(featureToChange, refinementPrompt);
+      console.log(`Mapped feature category '${featureToChange}' to mask: '${maskFeatureName}'`);
 
+      // Step 3: Create FormData to send to Python backend
+      const formData = new FormData();
+      formData.append('image', base64Image);
+      formData.append('feature_name', maskFeatureName);
+      formData.append('refinement_prompt', refinementPrompt);
+
+      // Step 4: Call the local Python backend
+      console.log("Calling backend API...");
+      const response = await fetch(BACKEND_URL, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Backend error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log("Backend response received:", data.message);
+
+      // The backend returns { image: "data:image/png;base64,...", message: "..." }
+      const newPrompt = `${currentPrompt}, ${refinementPrompt}`;
+
+      return {
+        imageUrl: data.image,
+        updatedPrompt: newPrompt
+      };
+
+    } catch (error) {
+      console.error("Backend refinement failed, falling back to Pollinations regeneration...", error);
+
+      // Fallback to old logic if backend fails (e.g. not running)
       let updatedPrompt = currentPrompt;
-      if (featureToChange !== 'inferred') {
-        updatedPrompt = `${currentPrompt}, ${refinementPrompt}`;
+      const lowerRefinement = refinementPrompt.toLowerCase().trim();
+
+      // Handle "remove", "delete", "no", "without" commands
+      const removeMatch = lowerRefinement.match(/^(?:remove|delete|no|without)\s+(.+)$/);
+
+      if (removeMatch) {
+        const termToRemove = removeMatch[1];
+        const regex = new RegExp(`(?:,\\s*)?\\b${termToRemove}\\b(?:\\s*,)?`, 'gi');
+        updatedPrompt = updatedPrompt.replace(regex, '');
+        updatedPrompt = updatedPrompt.replace(/,\s*,/g, ',').replace(/^,\s*/, '').replace(/,\s*$/, '');
       } else {
-        // If it's inferred, we might just append it too, or if the logic in App.tsx handles prompt merging, we just use what's passed.
-        // Let's assume for now we append to give more weight to the new instruction.
-        updatedPrompt = `${currentPrompt}, ${refinementPrompt}`;
+        if (!updatedPrompt.toLowerCase().includes(lowerRefinement)) {
+          updatedPrompt = `${updatedPrompt}, ${refinementPrompt}`;
+        }
       }
 
       const styleSuffix = ", forensic sketch style, pencil drawing, black and white, high contrast, detailed shading, front view, straight on, mugshot, symmetrical face";
@@ -69,9 +218,6 @@ export const mockApiService = {
       }
 
       return { imageUrl: response.url, updatedPrompt };
-
-    } catch (error) {
-      handleApiError(error, 'refinement');
     }
   },
 

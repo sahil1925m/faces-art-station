@@ -9,6 +9,7 @@ interface CanvasProps {
 const Canvas: React.FC<CanvasProps> = ({ currentImage, isLoading }) => {
   const canvasRef = React.useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = React.useState(false);
+  const [containerSize, setContainerSize] = React.useState({ width: 0, height: 0 });
 
   const toggleFullscreen = () => {
     if (!canvasRef.current) return;
@@ -31,121 +32,265 @@ const Canvas: React.FC<CanvasProps> = ({ currentImage, isLoading }) => {
       setIsFullscreen(!!document.fullscreenElement);
     };
 
+    const updateSize = () => {
+      if (canvasRef.current) {
+        setContainerSize({
+          width: canvasRef.current.clientWidth,
+          height: canvasRef.current.clientHeight
+        });
+      }
+    };
+
     document.addEventListener('fullscreenchange', handleFullscreenChange);
+    window.addEventListener('resize', updateSize);
+
+    // Initial size measure
+    updateSize();
+
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      window.removeEventListener('resize', updateSize);
     };
   }, []);
 
   return (
     <motion.div
       ref={canvasRef}
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className="glass-morphism rounded-2xl flex items-center justify-center h-full p-8 relative overflow-hidden shadow-2xl border border-white/10 bg-black/40"
+      className="relative w-full h-full bg-[#0a0a0a] rounded-2xl overflow-hidden border border-white/5 shadow-2xl flex flex-col"
     >
-      {/* Ambient glow effect */}
-      <div className="absolute inset-0 bg-gradient-radial from-primary/10 via-transparent to-transparent opacity-50 pointer-events-none" />
-
-      {/* Grid overlay for forensic feel */}
+      {/* Technical Grid Background */}
       <div
-        className="absolute inset-0 opacity-[0.03] pointer-events-none"
+        className="absolute inset-0 pointer-events-none opacity-10"
         style={{
-          backgroundImage: `linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px)`,
+          backgroundImage: `
+            linear-gradient(to right, #333 1px, transparent 1px),
+            linear-gradient(to bottom, #333 1px, transparent 1px)
+          `,
           backgroundSize: '40px 40px'
         }}
       />
 
-      {/* Fullscreen Button */}
-      {currentImage && !isLoading && (
-        <motion.button
-          onClick={toggleFullscreen}
-          className="absolute top-4 right-4 z-30 p-2 rounded-lg bg-black/50 hover:bg-black/70 border border-white/20 hover:border-primary/50 transition-all duration-200 group"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          title={isFullscreen ? "Exit Fullscreen" : "View Fullscreen"}
-        >
-          {isFullscreen ? (
-            <svg className="w-5 h-5 text-white group-hover:text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          ) : (
-            <svg className="w-5 h-5 text-white group-hover:text-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-            </svg>
-          )}
-        </motion.button>
-      )}
+      {/* Radial Vignette */}
+      <div className="absolute inset-0 pointer-events-none bg-gradient-radial from-transparent via-black/20 to-black/80" />
 
-      <div className="aspect-square w-full max-w-[800px] h-auto max-h-full relative z-10 group">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentImage}
-            initial={{ opacity: 0, scale: 0.9, filter: "blur(10px)" }}
-            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-            exit={{ opacity: 0, scale: 1.1, filter: "blur(10px)" }}
-            transition={{ duration: 0.5, ease: [0.23, 0.86, 0.39, 0.96] }}
-            className="absolute inset-0 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10"
+      {/* Header / Toolbar Area */}
+      <div className="absolute top-0 left-0 right-0 h-14 flex items-center justify-between px-4 z-30 pointer-events-none">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          <span className="text-xs font-mono text-white/40 tracking-widest uppercase">Canvas Active</span>
+        </div>
+
+        {/* Fullscreen Button */}
+        {currentImage && !isLoading && (
+          <button
+            onClick={toggleFullscreen}
+            className="pointer-events-auto p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all text-white/60 hover:text-white"
+            title={isFullscreen ? "Exit Fullscreen" : "View Fullscreen"}
           >
-            <img
-              src={currentImage}
-              alt="Current Composite"
-              className="w-full h-full object-contain bg-black/50"
-            />
-            {/* Image border glow */}
-            <div className="absolute inset-0 border border-primary/20 rounded-2xl pointer-events-none group-hover:border-primary/40 transition-colors duration-500" />
-
-            {/* Corner accents */}
-            <div className="absolute top-4 left-4 w-8 h-8 border-t-2 border-l-2 border-primary/50 rounded-tl-lg opacity-50" />
-            <div className="absolute top-4 right-4 w-8 h-8 border-t-2 border-r-2 border-primary/50 rounded-tr-lg opacity-50" />
-            <div className="absolute bottom-4 left-4 w-8 h-8 border-b-2 border-l-2 border-primary/50 rounded-bl-lg opacity-50" />
-            <div className="absolute bottom-4 right-4 w-8 h-8 border-b-2 border-r-2 border-primary/50 rounded-br-lg opacity-50" />
-          </motion.div>
-        </AnimatePresence>
-
-        {isLoading && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-md rounded-2xl flex items-center justify-center z-20 border border-white/10"
-          >
-            <div className="flex flex-col items-center gap-8 p-8 rounded-3xl bg-black/40 border border-white/5 shadow-2xl">
-              {/* Animated loading spinner */}
-              <div className="relative">
-                <div className="w-20 h-20 border-4 border-primary/20 rounded-full" />
-                <div className="absolute top-0 left-0 w-20 h-20 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                <div className="absolute inset-0 w-20 h-20 bg-primary/20 rounded-full blur-2xl animate-pulse" />
-
-                {/* Center icon */}
-                <div className="absolute inset-0 flex items-center justify-center text-primary">
-                  <svg className="w-8 h-8 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                  </svg>
-                </div>
-              </div>
-
-              {/* Loading text */}
-              <div className="text-center space-y-2">
-                <p className="text-white font-bold text-xl tracking-wide">Refining Composite</p>
-                <p className="text-blue-200/70 text-sm font-medium">AI processing facial features...</p>
-              </div>
-
-              {/* Progress indicator */}
-              <div className="w-56 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                <motion.div
-                  className="h-full bg-gradient-to-r from-primary via-cyan-400 to-primary"
-                  initial={{ width: "0%" }}
-                  animate={{ width: "100%" }}
-                  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-                />
-              </div>
-            </div>
-          </motion.div>
+            {isFullscreen ? (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
+            )}
+          </button>
         )}
       </div>
+
+      {/* Scrollable Viewport */}
+      <div
+        className="flex-1 w-full h-full overflow-auto relative z-10 no-scrollbar flex items-center justify-center p-8"
+        style={{
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+        }}
+      >
+        <style>{`
+          .no-scrollbar::-webkit-scrollbar {
+            display: none;
+          }
+        `}</style>
+
+        <ResizableImage
+          src={currentImage}
+          alt="Current Composite"
+          isLoading={isLoading}
+          containerSize={containerSize}
+        />
+      </div>
     </motion.div>
+  );
+};
+
+// Internal component for resizable functionality
+const ResizableImage: React.FC<{
+  src: string;
+  alt: string;
+  isLoading: boolean;
+  containerSize: { width: number, height: number };
+}> = ({ src, alt, isLoading, containerSize }) => {
+  const [size, setSize] = React.useState({ width: 512, height: 512 });
+  const [isResizing, setIsResizing] = React.useState(false);
+  const [hasInitialized, setHasInitialized] = React.useState(false);
+  const [isImageLoading, setIsImageLoading] = React.useState(true);
+  const [previousSrc, setPreviousSrc] = React.useState('');
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  // Track when src changes to show loading state
+  React.useEffect(() => {
+    if (src && src !== previousSrc) {
+      setIsImageLoading(true);
+      setPreviousSrc(src);
+    }
+  }, [src, previousSrc]);
+
+  // Auto-fit logic
+  React.useEffect(() => {
+    if (!src || hasInitialized || containerSize.width === 0) return;
+
+    // Calculate optimal initial size (85% of smallest dimension)
+    const minDim = Math.min(containerSize.width, containerSize.height);
+    const initialSize = Math.max(300, Math.min(minDim * 0.85, 800)); // Clamp between 300px and 800px
+
+    setSize({ width: initialSize, height: initialSize });
+    setHasInitialized(true);
+  }, [src, containerSize, hasInitialized]);
+
+  // Reset initialization when src changes significantly (optional, currently keeping size stable)
+  // If you want to re-fit on every new image, uncomment:
+  // React.useEffect(() => { setHasInitialized(false); }, [src]);
+
+  const startResize = (e: React.MouseEvent, direction: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(true);
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startWidth = size.width;
+    const startHeight = size.height;
+
+    const doDrag = (dragEvent: MouseEvent) => {
+      let newWidth = startWidth;
+      let newHeight = startHeight;
+
+      if (direction.includes('right')) {
+        newWidth = startWidth + (dragEvent.clientX - startX);
+      }
+      if (direction.includes('left')) {
+        newWidth = startWidth - (dragEvent.clientX - startX);
+      }
+      if (direction.includes('bottom')) {
+        newHeight = startHeight + (dragEvent.clientY - startY);
+      }
+      if (direction.includes('top')) {
+        newHeight = startHeight - (dragEvent.clientY - startY);
+      }
+
+      // Constrain size
+      newWidth = Math.max(200, newWidth); // No max limit, just min
+      newHeight = Math.max(200, newHeight);
+
+      setSize({ width: newWidth, height: newHeight });
+    };
+
+    const stopDrag = () => {
+      setIsResizing(false);
+      document.removeEventListener('mousemove', doDrag);
+      document.removeEventListener('mouseup', stopDrag);
+    };
+
+    document.addEventListener('mousemove', doDrag);
+    document.addEventListener('mouseup', stopDrag);
+  };
+
+  if (!src) {
+    return (
+      <div className="flex flex-col items-center justify-center text-white/20 gap-4">
+        <div className="w-16 h-16 rounded-full border-2 border-dashed border-white/10 flex items-center justify-center">
+          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+        </div>
+        <p className="font-mono text-sm">Awaiting Composite Generation...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      style={{ width: size.width, height: size.height }}
+      className="relative flex-shrink-0 transition-shadow duration-200 group select-none"
+    >
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={src}
+          initial={{ opacity: 0, scale: 0.95, filter: "blur(10px)" }}
+          animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+          exit={{ opacity: 0, scale: 1.05, filter: "blur(10px)" }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="absolute inset-0 rounded-lg overflow-hidden shadow-2xl bg-black"
+        >
+          <img
+            src={src}
+            alt={alt}
+            className={`w-full h-full object-cover transition-opacity duration-300 ${isImageLoading ? 'opacity-0' : 'opacity-100'}`}
+            draggable={false}
+            onLoad={() => setIsImageLoading(false)}
+            onError={() => setIsImageLoading(false)}
+          />
+
+          {/* Scanline Effect */}
+          <div className="absolute inset-0 pointer-events-none opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
+
+          {/* Border Glow */}
+          <div className={`absolute inset-0 border border-primary/30 rounded-lg pointer-events-none transition-all duration-300 ${isResizing ? 'border-primary shadow-[0_0_30px_rgba(99,102,241,0.3)]' : 'group-hover:border-primary/60'}`} />
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Resize Handles */}
+      <div className={`absolute -inset-4 pointer-events-none transition-opacity duration-200 ${isResizing || !hasInitialized ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+
+        {/* Corner Handles */}
+        <div className="absolute top-4 left-4 w-4 h-4 -translate-x-1/2 -translate-y-1/2 cursor-nw-resize pointer-events-auto flex items-center justify-center" onMouseDown={(e) => startResize(e, 'top-left')}>
+          <div className="w-2.5 h-2.5 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)] transition-transform hover:scale-150" />
+        </div>
+        <div className="absolute top-4 right-4 w-4 h-4 translate-x-1/2 -translate-y-1/2 cursor-ne-resize pointer-events-auto flex items-center justify-center" onMouseDown={(e) => startResize(e, 'top-right')}>
+          <div className="w-2.5 h-2.5 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)] transition-transform hover:scale-150" />
+        </div>
+        <div className="absolute bottom-4 left-4 w-4 h-4 -translate-x-1/2 translate-y-1/2 cursor-sw-resize pointer-events-auto flex items-center justify-center" onMouseDown={(e) => startResize(e, 'bottom-left')}>
+          <div className="w-2.5 h-2.5 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)] transition-transform hover:scale-150" />
+        </div>
+        <div className="absolute bottom-4 right-4 w-4 h-4 translate-x-1/2 translate-y-1/2 cursor-se-resize pointer-events-auto flex items-center justify-center" onMouseDown={(e) => startResize(e, 'bottom-right')}>
+          <div className="w-2.5 h-2.5 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)] transition-transform hover:scale-150" />
+        </div>
+
+        {/* Edge Handles (Invisible but clickable areas) */}
+        <div className="absolute top-2 left-4 right-4 h-4 cursor-n-resize pointer-events-auto" onMouseDown={(e) => startResize(e, 'top')} />
+        <div className="absolute bottom-2 left-4 right-4 h-4 cursor-s-resize pointer-events-auto" onMouseDown={(e) => startResize(e, 'bottom')} />
+        <div className="absolute left-2 top-4 bottom-4 w-4 cursor-w-resize pointer-events-auto" onMouseDown={(e) => startResize(e, 'left')} />
+        <div className="absolute right-2 top-4 bottom-4 w-4 cursor-e-resize pointer-events-auto" onMouseDown={(e) => startResize(e, 'right')} />
+      </div>
+
+      {/* Loading Overlay - shows during API processing OR image URL loading */}
+      {(isLoading || isImageLoading) && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm rounded-lg flex items-center justify-center z-20"
+        >
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm font-mono text-primary/80 animate-pulse">
+              {isLoading ? 'PROCESSING...' : 'GENERATING SKETCH...'}
+            </span>
+            <span className="text-xs text-white/40">This may take 10-30 seconds</span>
+          </div>
+        </motion.div>
+      )}
+    </div>
   );
 };
 

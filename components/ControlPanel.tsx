@@ -2,7 +2,7 @@ import * as React from 'react';
 import { FeatureCategory } from '../types';
 import VisualCategory from './visual-library/VisualCategory';
 import { visualLibrary } from './visual-library/visuals';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 interface RefinementItem {
   category: FeatureCategory;
