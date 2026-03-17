@@ -134,17 +134,32 @@ const ResizableImage: React.FC<{
   const [size, setSize] = React.useState({ width: 512, height: 512 });
   const [isResizing, setIsResizing] = React.useState(false);
   const [hasInitialized, setHasInitialized] = React.useState(false);
-  const [isImageLoading, setIsImageLoading] = React.useState(true);
+  const [isImageLoading, setIsImageLoading] = React.useState(!src?.startsWith('data:'));
+  const [hasError, setHasError] = React.useState(false);
+  const [retryCount, setRetryCount] = React.useState(0);
   const [previousSrc, setPreviousSrc] = React.useState('');
   const containerRef = React.useRef<HTMLDivElement>(null);
 
   // Track when src changes to show loading state
   React.useEffect(() => {
     if (src && src !== previousSrc) {
-      setIsImageLoading(true);
+      // Base64 images load instantly, so we skip the loading state
+      setIsImageLoading(!src.startsWith('data:'));
+      setHasError(false);
       setPreviousSrc(src);
     }
   }, [src, previousSrc]);
+
+  const handleRetry = () => {
+    setRetryCount(prev => prev + 1);
+    setHasError(false);
+    setIsImageLoading(true);
+  };
+
+  // Build the image src with a cache-buster on retry
+  const imageSrc = retryCount > 0 && src
+    ? `${src}${src.includes('?') ? '&' : '?'}_retry=${retryCount}`
+    : src;
 
   // Auto-fit logic
   React.useEffect(() => {
@@ -232,14 +247,37 @@ const ResizableImage: React.FC<{
           transition={{ duration: 0.4, ease: "easeOut" }}
           className="absolute inset-0 rounded-lg overflow-hidden shadow-2xl bg-black"
         >
-          <img
-            src={src}
-            alt={alt}
-            className={`w-full h-full object-cover transition-opacity duration-300 ${isImageLoading ? 'opacity-0' : 'opacity-100'}`}
-            draggable={false}
-            onLoad={() => setIsImageLoading(false)}
-            onError={() => setIsImageLoading(false)}
-          />
+          {!hasError ? (
+            <img
+              src={imageSrc}
+              alt={alt}
+              className={`w-full h-full object-cover transition-opacity duration-300 ${isImageLoading ? 'opacity-0' : 'opacity-100'}`}
+              draggable={false}
+              onLoad={() => { setIsImageLoading(false); setHasError(false); }}
+              onError={() => { setIsImageLoading(false); setHasError(true); }}
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center gap-4 text-white/60 p-6">
+              <svg className="w-16 h-16 text-red-400/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+              <div className="text-center space-y-1">
+                <p className="text-sm font-medium text-white/80">Image Failed to Load</p>
+                <p className="text-xs text-white/40 max-w-[250px]">
+                  The image generation service (Pollinations AI) may be temporarily unavailable.
+                </p>
+              </div>
+              <button
+                onClick={handleRetry}
+                className="mt-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-all hover:scale-105 active:scale-95 shadow-lg shadow-indigo-600/20 flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Retry
+              </button>
+            </div>
+          )}
 
           {/* Scanline Effect */}
           <div className="absolute inset-0 pointer-events-none opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
@@ -274,7 +312,7 @@ const ResizableImage: React.FC<{
       </div>
 
       {/* Loading Overlay - shows during API processing OR image URL loading */}
-      {(isLoading || isImageLoading) && (
+      {(isLoading || isImageLoading) && !hasError && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

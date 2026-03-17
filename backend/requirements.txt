@@ -5,3 +5,5 @@ pillow
 numpy
 httpx
 python-dotenv
+requests
+huggingface-hub

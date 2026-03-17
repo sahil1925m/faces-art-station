@@ -121,21 +121,47 @@ export const mockApiService = {
     try {
       console.log(`Generating initial composite for prompt: "${prompt}" with seed: ${seed}`);
 
-      const styleSuffix = ", forensic sketch style, pencil drawing, black and white, high contrast, detailed shading, front view, straight on, mugshot, symmetrical face";
-      const fullPrompt = `${prompt}${styleSuffix}`;
-      const encodedPrompt = encodeURIComponent(fullPrompt);
-      const seedParam = seed ? `&seed=${seed}` : '';
-      const imageUrl = `${POLLINATIONS_URL}/${encodedPrompt}?nologo=true${seedParam}`;
+      const BACKEND_GENERATE_URL = 'http://localhost:8000/api/generate-composite';
 
-      // Return URL immediately - let the <img> tag handle loading
-      // Pollinations API generates the image when the URL is accessed
-      // This provides much faster perceived response time
-      console.log("Returning image URL for lazy loading:", imageUrl);
-      return imageUrl;
+      const formData = new FormData();
+      formData.append('prompt', prompt);
+      formData.append('seed', String(seed ?? 0));
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 180000); // 3-min timeout for Gemini
+
+      const response = await fetch(BACKEND_GENERATE_URL, {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.image && data.image.startsWith('data:image')) {
+          console.log('Backend composite generation successful.');
+          return data.image;
+        }
+        throw new Error('Backend returned OK but no valid image data.');
+      }
+
+      // Parse backend error
+      let errorDetail = `Backend returned HTTP ${response.status}`;
+      try {
+        const errData = await response.json();
+        if (errData.detail) errorDetail = errData.detail;
+      } catch { /* ignore parse error */ }
+      
+      throw new Error(`Failed to generate composite: ${errorDetail}`);
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new Error('Image generation timed out (3 min). Please try again.');
+      }
       handleApiError(error, 'generation');
     }
   },
+
 
   refineFeature: async (
     currentImage: string, // Could be URL or base64
@@ -148,22 +174,46 @@ export const mockApiService = {
     console.log(`Refining feature '${featureToChange}' with prompt: "${refinementPrompt}"`);
 
     try {
-      // Step 1: Convert image URL to base64 if needed
+      // Step 1: Pre-calculate the updated prompt and handle removals
+      let updatedPrompt = currentPrompt;
+      const lowerRefinement = refinementPrompt.toLowerCase().trim();
+
+      // Handle "remove", "delete", "no", "without" commands
+      const removeMatch = lowerRefinement.match(/^(?:remove|delete|no|without)\s+(.+)$/);
+
+      if (removeMatch) {
+        const termToRemove = removeMatch[1];
+        const regex = new RegExp(`(?:,\\s*)?\\b${termToRemove}\\b(?:\\s*,)?`, 'gi');
+        updatedPrompt = updatedPrompt.replace(regex, '');
+        // Clean up any double commas or leading/trailing commas
+        updatedPrompt = updatedPrompt.replace(/,\s*,/g, ',').replace(/^,\s*/, '').replace(/,\s*$/, '');
+      } else {
+        if (!updatedPrompt.toLowerCase().includes(lowerRefinement)) {
+           // We'll append the refinement prompt, but the actual backend will use the feature to decide if it's additive
+           updatedPrompt = `${updatedPrompt}, ${refinementPrompt}`;
+        }
+      }
+
+      console.log(`Updated underlying prompt base: "${updatedPrompt}"`);
+
+      // Step 2: Convert image URL to base64 if needed
       console.log("Converting image to base64...");
       const base64Image = await imageUrlToBase64(currentImage);
       console.log("Image converted, length:", base64Image.length);
 
-      // Step 2: Infer the correct feature from the prompt if category is 'inferred'
+      // Step 3: Infer the correct feature from the prompt if category is 'inferred'
       const maskFeatureName = mapCategoryToMaskName(featureToChange, refinementPrompt);
       console.log(`Mapped feature category '${featureToChange}' to mask: '${maskFeatureName}'`);
 
-      // Step 3: Create FormData to send to Python backend
+      // Step 4: Create FormData to send to Python backend
       const formData = new FormData();
       formData.append('image', base64Image);
       formData.append('feature_name', maskFeatureName);
       formData.append('refinement_prompt', refinementPrompt);
+      formData.append('updated_prompt', updatedPrompt);
+      formData.append('seed', String(seed));
 
-      // Step 4: Call the local Python backend
+      // Step 5: Call the local Python backend
       console.log("Calling backend API...");
       const response = await fetch(BACKEND_URL, {
         method: 'POST',
@@ -178,25 +228,22 @@ export const mockApiService = {
       const data = await response.json();
       console.log("Backend response received:", data.message);
 
-      // The backend returns { image: "data:image/png;base64,...", message: "..." }
-      const newPrompt = `${currentPrompt}, ${refinementPrompt}`;
-
       return {
         imageUrl: data.image,
-        updatedPrompt: newPrompt
+        updatedPrompt: updatedPrompt
       };
 
     } catch (error) {
       console.error("Backend refinement failed, falling back to Pollinations regeneration...", error);
 
       // Fallback to old logic if backend fails (e.g. not running)
+      // updatedPrompt is already calculated above, we just need to re-calculate it for fallback scope if we didn't hoist it
+      // For fallback safety, recalculate or use hoisted
       let updatedPrompt = currentPrompt;
       const lowerRefinement = refinementPrompt.toLowerCase().trim();
-
-      // Handle "remove", "delete", "no", "without" commands
       const removeMatch = lowerRefinement.match(/^(?:remove|delete|no|without)\s+(.+)$/);
 
-      if (removeMatch) {
+       if (removeMatch) {
         const termToRemove = removeMatch[1];
         const regex = new RegExp(`(?:,\\s*)?\\b${termToRemove}\\b(?:\\s*,)?`, 'gi');
         updatedPrompt = updatedPrompt.replace(regex, '');
@@ -222,12 +269,27 @@ export const mockApiService = {
   },
 
   searchDatabase: async (sketchImage: string): Promise<DbMatch[]> => {
-    // --- LIVE FRONTEND SIMULATION ---
-    console.log("Simulating vector search against database for image:", sketchImage.substring(0, 50) + "...");
+    try {
+      console.log("Searching database for sketch...");
+      const base64Image = await imageUrlToBase64(sketchImage);
 
-    await new Promise(resolve => setTimeout(resolve, 3000)); // Simulate 3 second search time
+      const formData = new FormData();
+      formData.append('image', base64Image);
 
-    const matches = searchCriminalDatabase();
-    return matches;
+      const response = await fetch('http://localhost:8000/api/search-database', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Search failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.matches;
+    } catch (error) {
+      console.error("Database search failed:", error);
+      throw error;
+    }
   }
 };

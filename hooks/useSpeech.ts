@@ -121,6 +121,9 @@ export const useSpeech = (): UseSpeechReturn => {
             audioRef.current.currentTime = 0;
         }
 
+        // Temporarily disabled TTS to avoid 500 errors
+        return;
+
         try {
             const formData = new FormData();
             formData.append('text', text);

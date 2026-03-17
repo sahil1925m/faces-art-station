@@ -15,6 +15,7 @@ dist-ssr
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
 .idea
 .DS_Store
 *.suo
@@ -22,3 +23,16 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Temp/scratch files
+site_packages.txt
+python_path.txt
+python_user_site.txt
+pyright_output.txt
+pyright_output2.txt

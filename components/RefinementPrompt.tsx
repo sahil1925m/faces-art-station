@@ -149,11 +149,11 @@ const RefinementPrompt: React.FC<RefinementPromptProps> = ({ onRefine, isLoading
       <motion.button
         onClick={handleRefineClick}
         disabled={isLoading || !hasChanges}
-        className="w-full py-3 px-6 gradient-primary text-primary-foreground font-bold rounded-xl shadow-lg hover:shadow-glow transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2 relative overflow-hidden group"
+        className="w-full py-3 px-6 bg-white text-black hover:bg-gray-200 font-bold rounded-xl shadow-[0_0_15px_rgba(255,255,255,0.3)] hover:shadow-[0_0_25px_rgba(255,255,255,0.5)] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2 relative overflow-hidden group"
         whileTap={{ scale: 0.98 }}
         transition={{ duration: 0.1 }}
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-black/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
         {isLoading ? (
           <>
             <svg className="animate-spin h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
