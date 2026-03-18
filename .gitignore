@@ -30,6 +30,11 @@ __pycache__/
 *.py[cod]
 *.pyo
 
+# Environment variables (NEVER commit these)
+.env
+.env.*
+!.env.example
+
 # Temp/scratch files
 site_packages.txt
 python_path.txt
