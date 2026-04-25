@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Form, Request  # pyre-ignore[21]
+﻿from fastapi import FastAPI, HTTPException, Form, Request  # pyre-ignore[21]
 from fastapi.middleware.cors import CORSMiddleware  # pyre-ignore[21]
 from fastapi.exceptions import RequestValidationError  # pyre-ignore[21]
 from fastapi.responses import JSONResponse  # pyre-ignore[21]
@@ -105,7 +105,7 @@ async def generate_composite(prompt: str = Form(...), seed: int = Form(0)):
 
 
 
-# The "Nose Dictionary" - precise prompts for surgical refinement (Nuclear/SDXL optimized)
+# The "Nose Dictionary" - precise prompts for surgical refinement
 NOSE_PROMPTS = {
     "button": "Short, small, upturned button nose with round tip",
     "hooked": "Prominent aquiline nose, hooked shape, dorsal hump, downward tip",
