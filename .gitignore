@@ -17,6 +17,7 @@ dist-ssr
 !.vscode/extensions.json
 !.vscode/settings.json
 .idea
+.agents/
 .DS_Store
 *.suo
 *.ntvs*
@@ -41,3 +42,13 @@ python_path.txt
 python_user_site.txt
 pyright_output.txt
 pyright_output2.txt
+
+# Local Node binary and downloads
+node-v*
+*.zip
+
+# Local SQLite databases and uploads
+data/*.db
+data/*.sqlite*
+public/criminal_faces/*
+!public/criminal_faces/.gitkeep

@@ -9,9 +9,10 @@ interface HeaderProps {
   onCaseNumberChange: (value: string) => void;
   onSearch: () => void;
   isSearchEnabled: boolean;
+  onSaveToDatabase?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onReset, showControls, onExport, caseNumber, onCaseNumberChange, onSearch, isSearchEnabled }) => {
+const Header: React.FC<HeaderProps> = ({ onReset, showControls, onExport, caseNumber, onCaseNumberChange, onSearch, isSearchEnabled, onSaveToDatabase }) => {
 
   if (showControls) {
     return (
@@ -44,6 +45,21 @@ const Header: React.FC<HeaderProps> = ({ onReset, showControls, onExport, caseNu
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2 md:gap-3">
+          {onSaveToDatabase && (
+            <motion.button
+              onClick={onSaveToDatabase}
+              className="p-2 md:px-5 md:py-2.5 bg-slate-800 text-slate-200 border border-slate-600 font-semibold rounded-lg hover:bg-slate-700 smooth-transition relative overflow-hidden group flex items-center justify-center"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              title="Save Sketch to Database"
+            >
+              <svg className="w-5 h-5 md:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+              </svg>
+              <span className="relative z-10 hidden md:inline text-sm uppercase tracking-wider">Save Sketch</span>
+            </motion.button>
+          )}
+
           <motion.button
             onClick={onSearch}
             disabled={!isSearchEnabled}

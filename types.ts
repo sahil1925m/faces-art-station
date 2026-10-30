@@ -31,6 +31,8 @@ export interface DbMatch {
     subjectId: string;
     score: number;
     imageUrl: string;
+    name?: string;
+    description?: string;
 }
 
 export interface Message {

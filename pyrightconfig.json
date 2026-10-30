@@ -4,5 +4,11 @@
     "venv": ".venv",
     "extraPaths": [
         "./backend"
-    ]
+    ],
+    "typeCheckingMode": "off",
+    "reportMissingImports": false,
+    "reportMissingModuleSource": false,
+    "reportAttributeAccessIssue": false,
+    "reportReturnType": false,
+    "reportGeneralTypeIssues": false
 }

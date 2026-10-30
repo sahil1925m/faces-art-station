@@ -270,26 +270,68 @@ export const mockApiService = {
 
   searchDatabase: async (sketchImage: string): Promise<DbMatch[]> => {
     try {
-      console.log("Searching database for sketch...");
-      const base64Image = await imageUrlToBase64(sketchImage);
+      console.log("Fetching suspects from Supabase for database search...");
 
-      const formData = new FormData();
-      formData.append('image', base64Image);
+      // Fetch all suspects from Supabase
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const client = createClient(supabaseUrl, supabaseKey);
 
-      const response = await fetch('http://localhost:8000/api/search-database', {
-        method: 'POST',
-        body: formData,
-      });
+      const { data: suspects, error } = await client
+        .from('suspects')
+        .select('*')
+        .not('image_url', 'is', null)
+        .neq('image_url', '')
+        .not('name', 'ilike', '[SKETCH]%');
 
-      if (!response.ok) {
-        throw new Error(`Search failed: ${response.statusText}`);
+      if (error) throw new Error(`Supabase fetch failed: ${error.message}`);
+      if (!suspects || suspects.length === 0) {
+        console.warn("No suspects with images found in Supabase.");
+        return [];
       }
 
-      const data = await response.json();
-      return data.matches;
+      console.log(`Comparing sketch against ${suspects.length} suspects...`);
+
+      // Call compare-faces for each suspect
+      const results = await Promise.all(
+        suspects.map(async (suspect: any) => {
+          try {
+            const res = await fetch('http://localhost:8000/api/compare-faces', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                sketch_url: sketchImage,
+                real_image_url: suspect.image_url,
+              }),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            return {
+              subjectId: suspect.id,
+              name: suspect.name,
+              description: suspect.description,
+              imageUrl: suspect.image_url,
+              score: Math.round(data.confidence_score ?? 0),
+            } as DbMatch;
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      // Filter nulls, sort by score desc, return top matches
+      const valid = results
+        .filter((r): r is DbMatch => r !== null && r.score >= 40)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 6);
+
+      console.log(`Found ${valid.length} potential matches.`);
+      return valid;
     } catch (error) {
       console.error("Database search failed:", error);
       throw error;
     }
   }
 };
+

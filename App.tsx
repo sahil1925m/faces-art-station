@@ -14,11 +14,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import DashboardLayout from './components/DashboardLayout';
 import ResizableSplitPane from './components/ResizableSplitPane';
 import LandingPage from './components/LandingPage';
-import ChatInterface from './components/chat/ChatInterface'; // Use ChatInterface for the interview part
+import ChatInterface from './components/chat/ChatInterface';
+import CommandDashboard from './components/CommandDashboard';
+import SaveSketchDialog from './components/SaveSketchDialog';
 
 const App: React.FC = () => {
-  // 'LANDING' -> 'INTERVIEW' (ChatInterface) -> 'DASHBOARD' (Canvas/Refine)
-  const [view, setView] = React.useState<'LANDING' | 'INTERVIEW' | 'DASHBOARD'>('LANDING');
+  // 'LANDING' -> 'INTERVIEW' (ChatInterface) -> 'DASHBOARD' (Canvas/Refine) | 'COMMAND_DASHBOARD'
+  const [view, setView] = React.useState<'LANDING' | 'INTERVIEW' | 'DASHBOARD' | 'COMMAND_DASHBOARD'>('LANDING');
 
   // Existing state
   const [isLoading, setIsLoading] = React.useState(false);
@@ -30,18 +32,39 @@ const App: React.FC = () => {
   const [caseNumber, setCaseNumber] = React.useState('');
   const [isSearchingDb, setIsSearchingDb] = React.useState(false);
   const [dbMatches, setDbMatches] = React.useState<DbMatch[]>([]);
+  const [isSaveModalOpen, setIsSaveModalOpen] = React.useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = React.useState(false);
+  // Gender captured from the interview — persisted to DB when sketch is saved
+  const [sketchGender, setSketchGender] = React.useState<'male' | 'female' | 'unknown'>('unknown');
 
   // Called when "Start Interview" is clicked on Landing Page
   const startInterview = () => {
     setView('INTERVIEW');
   };
 
+  // Called when "Access Dashboard" is clicked on Landing Page
+  const navigateToCommandDashboard = () => {
+    setView('COMMAND_DASHBOARD');
+  };
+
+  // Reopen a case from Dashboard by starting an interview with a seed prompt
+  const handleOpenCase = (prompt: string) => {
+    setView('INTERVIEW');
+  };
+
   // Called when Chat Interface completes interview
-  const handleGenerateInitialComposite = React.useCallback(async (prompt: string) => {
+  const handleGenerateInitialComposite = React.useCallback(async (prompt: string, interviewData?: import('./types').InterviewData) => {
     setIsLoading(true);
     setInitialPrompt(prompt);
     setCurrentPrompt(prompt);
+
+    // Extract and store gender from interview data for use when saving the sketch
+    if (interviewData?.gender) {
+      const g = interviewData.gender.toLowerCase();
+      setSketchGender(g === 'male' ? 'male' : g === 'female' ? 'female' : 'unknown');
+    } else {
+      setSketchGender('unknown');
+    }
 
     const newSeed = Math.floor(Math.random() * 1000000);
     setSeed(newSeed);
@@ -272,6 +295,10 @@ const App: React.FC = () => {
     }
   };
 
+  const handleSaveToDatabase = () => {
+    setIsSaveModalOpen(true);
+  };
+
 
   const resetToPrompt = () => {
     setView('LANDING'); // Go back to landing page? Or Interview? let's go to Landing for full reset.
@@ -290,15 +317,31 @@ const App: React.FC = () => {
 
   const [mobileTab, setMobileTab] = React.useState<'VIEW' | 'EDIT' | 'HISTORY'>('VIEW');
 
+  const pageVariants = {
+    initial: { opacity: 0, y: 12 },
+    animate: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
+    exit: { opacity: 0, y: -8, transition: { duration: 0.2 } },
+  };
+
   const renderContent = () => {
     switch (view) {
       case 'LANDING':
-        return <LandingPage onStart={startInterview} />;
+        return (
+          <motion.div key="landing" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="h-full w-full">
+            <LandingPage onStart={startInterview} onDashboard={navigateToCommandDashboard} />
+          </motion.div>
+        );
+      case 'COMMAND_DASHBOARD':
+        return (
+          <motion.div key="cmd-dashboard" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="h-full w-full">
+            <CommandDashboard onBack={() => setView('LANDING')} currentSketchUrl={currentImage || undefined} />
+          </motion.div>
+        );
       case 'INTERVIEW':
         return (
-          <div className="h-full w-full flex items-center justify-center p-4">
-            <ChatInterface onGenerate={handleGenerateInitialComposite} isLoading={isLoading} />
-          </div>
+          <motion.div key="interview" variants={pageVariants} initial="initial" animate="animate" exit="exit" className="h-full w-full flex items-center justify-center p-4">
+            <ChatInterface onGenerate={handleGenerateInitialComposite} isLoading={isLoading} onBack={() => setView('LANDING')} />
+          </motion.div>
         );
       case 'DASHBOARD':
         return (
@@ -439,6 +482,7 @@ const App: React.FC = () => {
     }
   };
 
+
   return (
     <div className="bg-background text-foreground h-screen flex flex-col antialiased overflow-hidden relative">
       {/* Background Glow Effect */}
@@ -453,7 +497,7 @@ const App: React.FC = () => {
       }} />
       <div className="relative z-10 w-full">
         {/* Only show header in Dashboard/Interview modes if desired, but kept for all for now or maybe hide on Landing */}
-        {view !== 'LANDING' && (
+        {view !== 'LANDING' && view !== 'COMMAND_DASHBOARD' && (
           <Header
             onReset={resetToPrompt}
             showControls={view === 'DASHBOARD'}
@@ -462,14 +506,26 @@ const App: React.FC = () => {
             onCaseNumberChange={setCaseNumber}
             onSearch={handleDatabaseSearch}
             isSearchEnabled={!!currentImage && !isLoading && !isSearchingDb}
+            onSaveToDatabase={handleSaveToDatabase}
           />
         )}
       </div>
-      <main className={`flex-grow flex flex-col ${view !== 'LANDING' ? 'p-4 pt-0' : ''} overflow-hidden relative z-10`}>
-        {renderContent()}
+      <main className={`flex-grow flex flex-col ${view !== 'LANDING' && view !== 'COMMAND_DASHBOARD' ? 'p-4 pt-0' : ''} overflow-hidden relative z-10`}>
+        <AnimatePresence mode="wait">
+          {renderContent()}
+        </AnimatePresence>
+        
+        <SaveSketchDialog 
+          isOpen={isSaveModalOpen} 
+          onOpenChange={setIsSaveModalOpen} 
+          sketchUrl={currentImage} 
+          defaultCaseNumber={caseNumber}
+          sketchGender={sketchGender}
+        />
       </main>
       {isSearchModalOpen && (
         <DatabaseMatchModal
+          currentSketchUrl={currentImage}
           matches={dbMatches}
           isSearching={isSearchingDb}
           onClose={() => setIsSearchModalOpen(false)}

@@ -1,4 +1,4 @@
-﻿"""
+"""
 F.A.C.E.S. AI Services - Gemini Image Generation Version
 Uses Google Gemini's image generation API for inpainting / face refinement.
 Works with Python 3.14+.
@@ -133,7 +133,6 @@ class FaceIdentifier:
         return mask
 
 
-import httpx  # pyre-ignore[21]
 import json
 
 class DigitalSurgeon:
@@ -146,15 +145,16 @@ class DigitalSurgeon:
     HF_MODEL = "black-forest-labs/FLUX.1-schnell"
 
     def __init__(self):
-        self.api_key: str = os.getenv("HUGGING_FACE_KEY") or ""  # pyre-ignore[8]
+        from typing import Any
+        self.api_key: str = os.getenv("HUGGING_FACE_KEY") or ""
+        self.client: Any = None
         self.has_api = bool(self.api_key) and "YOUR" not in self.api_key.upper()
         if self.has_api:
-            print(f"DigitalSurgeon initialized (Hugging Face mode) - Key: {self.api_key[:10]}...")  # pyre-ignore[16]
-            from huggingface_hub import InferenceClient  # pyre-ignore[21]
-            self.client = InferenceClient(api_key=self.api_key)  # pyre-ignore[16]
+            print(f"DigitalSurgeon initialized (Hugging Face mode) - Key: {self.api_key[:10]}...")
+            from huggingface_hub import InferenceClient
+            self.client = InferenceClient(api_key=self.api_key)
         else:
             print("DigitalSurgeon WARNING: No HUGGING_FACE_KEY found!")
-            self.client = None
 
     def generate(self, prompt: str, seed: int = 0) -> Image.Image | None:
         """Generate an initial forensic composite sketch from a text description."""
@@ -273,41 +273,64 @@ class BiometricEncoder:
 
 
 class CriminalDatabase:
-    """Handles loading and searching the criminal image database."""
+    """Handles loading and searching the criminal image database from SQLite."""
     
     def __init__(self, encoder: BiometricEncoder):
         self.encoder = encoder
-        self.database_dir = os.path.join(os.path.dirname(__file__), "..", "public", "criminals")
-        self.records = [] # List of {id, path, vector}
-        self._initialize_database()
+        
+        # SQLite database path
+        self.db_path = os.path.join(os.path.dirname(__file__), "..", "data", "suspects.db")
+        self.uploads_dir = os.path.join(os.path.dirname(__file__), "..", "public", "criminal_faces")
+        self.records = [] # List of {id, path, vector, name, description}
+        self.reload_database()
 
-    def _initialize_database(self):
-        """Pre-calculate vectors for all images in the criminals directory."""
-        if not os.path.exists(self.database_dir):
-            print(f"Warning: Criminal database directory not found at {self.database_dir}")
+    def reload_database(self):
+        """Load records from SQLite database and pre-calculate vectors for all images."""
+        import sqlite3
+        import urllib.request
+        
+        self.records = []
+        
+        if not os.path.exists(self.db_path):
+            print(f"Warning: Criminal database not found at {self.db_path}. Run main.py first.")
             return
 
-        print(f"Initializing Criminal Database from {self.database_dir}...")
+        print(f"Initializing Criminal Database from SQLite {self.db_path}...")
         
-        for filename in os.listdir(self.database_dir):
-            if filename.lower().endswith((".png", ".jpg", ".jpeg", ".webp")):
-                path = os.path.join(self.database_dir, filename)
-                try:
-                    img = Image.open(path).convert("RGB")
-                    vector = self.encoder.encode(img)
-                    
-                    # Create a friendly ID from filename
-                    subject_id = filename.split(".")[0].replace("mini", "S-").strip(" ()")
-                    
-                    self.records.append({
-                        "subjectId": subject_id,
-                        "imageUrl": f"/criminals/{filename}",
-                        "vector": vector
-                    })
-                except Exception as e:
-                    print(f"Error processing {filename}: {e}")
-        
-        print(f"Database initialized with {len(self.records)} records.")
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute("SELECT id, name, description, image_url FROM criminals").fetchall()
+            
+            for row in rows:
+                image_url = row["image_url"]
+                if not image_url:
+                    continue
+                
+                # We extract the filename from the URL to load it locally
+                # Example: http://localhost:8000/criminal_faces/xxx.jpg -> xxx.jpg
+                filename = image_url.split("/")[-1]
+                local_path = os.path.join(self.uploads_dir, filename)
+                
+                if os.path.exists(local_path):
+                    try:
+                        img = Image.open(local_path).convert("RGB")
+                        vector = self.encoder.encode(img)
+                        
+                        self.records.append({
+                            "subjectId": row["id"],
+                            "name": row["name"],
+                            "description": row["description"],
+                            "imageUrl": image_url,
+                            "vector": vector
+                        })
+                    except Exception as e:
+                        print(f"Error processing image for {row['name']} ({local_path}): {e}")
+            
+            conn.close()
+            print(f"Database initialized with {len(self.records)} records.")
+        except Exception as e:
+            print(f"Error initializing database from SQLite: {e}")
 
     def search(self, query_vector: list[float], top_n: int = 5) -> list[dict]:
         """Perform cosine similarity search against the database."""
@@ -340,6 +363,8 @@ class CriminalDatabase:
 
             matches.append({
                 "subjectId": record["subjectId"],
+                "name": record.get("name"),
+                "description": record.get("description"),
                 "score": score,
                 "imageUrl": record["imageUrl"]
             })
